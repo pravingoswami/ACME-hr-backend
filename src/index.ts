@@ -2,6 +2,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { errorHandler } from "./middleware/errorHandler";
+import { assertProductionDatabaseConfig } from "./lib/databaseUrl";
+import { connectDatabaseWithRetry } from "./lib/connectDatabase";
 import { prisma } from "./lib/prisma";
 import { seedAdmin } from "./lib/seed";
 import { seedEmployees } from "./lib/seedEmployees";
@@ -36,7 +38,8 @@ app.use(errorHandler);
 
 async function start() {
   try {
-    await prisma.$connect();
+    assertProductionDatabaseConfig();
+    await connectDatabaseWithRetry();
     console.log("Connected to PostgreSQL (Supabase)");
     await seedAdmin();
     await seedReferenceData();
