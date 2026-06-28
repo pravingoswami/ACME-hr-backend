@@ -18,3 +18,32 @@ export const employeeStatusValues = [
   EmployeeStatus.INACTIVE,
   EmployeeStatus.ON_LEAVE,
 ] as const;
+
+export const JobStatus = {
+  PENDING: "PENDING",
+  PROCESSING: "PROCESSING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+} as const;
+
+export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
+
+export const AuditAction = {
+  CREATE: "CREATE",
+  UPDATE: "UPDATE",
+  DELETE: "DELETE",
+  BULK_ADJUST: "BULK_ADJUST",
+  IMPORT: "IMPORT",
+  EXPORT: "EXPORT",
+} as const;
+
+export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction];
+
+export const auditActionValues = [
+  AuditAction.CREATE,
+  AuditAction.UPDATE,
+  AuditAction.DELETE,
+  AuditAction.BULK_ADJUST,
+  AuditAction.IMPORT,
+  AuditAction.EXPORT,
+] as const;

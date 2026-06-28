@@ -1,7 +1,15 @@
 import { EmployeeStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { createAuditLog } from "./audit.service";
+import { ensureSalaryRecordForEmployee } from "./salary.service";
+import { AuditAction } from "../types/enums";
 import { buildPaginationMeta, PaginatedResult, PaginationParams } from "../utils/pagination";
-import { CreateEmployeeInput, UpdateEmployeeInput } from "../validators/employee.validator";
+import {
+  CreateEmployeeInput,
+  EmployeeListQuery,
+  UpdateEmployeeInput,
+} from "../validators/employee.validator";
+import { buildEmployeeOrderBy, buildEmployeeSearchWhere } from "../utils/employeeSearch";
 
 const employeeSelect = {
   id: true,
@@ -15,8 +23,14 @@ const employeeSelect = {
   hireDate: true,
   salary: true,
   status: true,
+  countryId: true,
+  departmentId: true,
+  jobGradeId: true,
   createdAt: true,
   updatedAt: true,
+  countryRef: { select: { id: true, code: true, name: true, currencyCode: true } },
+  departmentRef: { select: { id: true, code: true, name: true } },
+  jobGradeRef: { select: { id: true, name: true, level: true } },
 } satisfies Prisma.EmployeeSelect;
 
 export type SafeEmployee = Prisma.EmployeeGetPayload<{ select: typeof employeeSelect }>;
@@ -26,21 +40,26 @@ function parseHireDate(value: string): Date {
 }
 
 export async function getEmployeesPaginated(
-  params: PaginationParams,
+  pagination: PaginationParams,
+  query: EmployeeListQuery = {},
 ): Promise<PaginatedResult<SafeEmployee>> {
+  const where = buildEmployeeSearchWhere(query);
+  const orderBy = buildEmployeeOrderBy(query);
+
   const [total, items] = await Promise.all([
-    prisma.employee.count(),
+    prisma.employee.count({ where }),
     prisma.employee.findMany({
+      where,
       select: employeeSelect,
-      orderBy: { createdAt: "desc" },
-      skip: params.skip,
-      take: params.limit,
+      orderBy,
+      skip: pagination.skip,
+      take: pagination.limit,
     }),
   ]);
 
   return {
     items,
-    pagination: buildPaginationMeta(total, params.page, params.limit),
+    pagination: buildPaginationMeta(total, pagination.page, pagination.limit),
   };
 }
 
@@ -57,7 +76,10 @@ export async function getEmployeeById(id: string): Promise<SafeEmployee> {
   return employee;
 }
 
-export async function createEmployee(input: CreateEmployeeInput): Promise<SafeEmployee> {
+export async function createEmployee(
+  input: CreateEmployeeInput,
+  actorId?: string,
+): Promise<SafeEmployee> {
   const existingCode = await prisma.employee.findUnique({
     where: { employeeCode: input.employeeCode },
   });
@@ -74,7 +96,7 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<SafeEm
     throw new Error("Email already in use");
   }
 
-  return prisma.employee.create({
+  const employee = await prisma.employee.create({
     data: {
       employeeCode: input.employeeCode,
       firstName: input.firstName,
@@ -86,12 +108,35 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<SafeEm
       hireDate: parseHireDate(input.hireDate),
       salary: input.salary,
       status: input.status ?? EmployeeStatus.ACTIVE,
+      countryId: input.countryId,
+      departmentId: input.departmentId,
+      jobGradeId: input.jobGradeId,
     },
     select: employeeSelect,
   });
+
+  if (input.salary) {
+    await ensureSalaryRecordForEmployee(employee.id, input.salary);
+  }
+
+  if (actorId) {
+    await createAuditLog({
+      userId: actorId,
+      action: AuditAction.CREATE,
+      entityType: "employee",
+      entityId: employee.id,
+      metadata: { employeeCode: employee.employeeCode },
+    });
+  }
+
+  return employee;
 }
 
-export async function updateEmployee(id: string, input: UpdateEmployeeInput): Promise<SafeEmployee> {
+export async function updateEmployee(
+  id: string,
+  input: UpdateEmployeeInput,
+  actorId?: string,
+): Promise<SafeEmployee> {
   await getEmployeeById(id);
 
   if (input.employeeCode) {
@@ -124,20 +169,49 @@ export async function updateEmployee(id: string, input: UpdateEmployeeInput): Pr
     position: input.position,
     salary: input.salary,
     status: input.status,
+    countryRef: input.countryId === null ? { disconnect: true } : input.countryId ? { connect: { id: input.countryId } } : undefined,
+    departmentRef: input.departmentId === null ? { disconnect: true } : input.departmentId ? { connect: { id: input.departmentId } } : undefined,
+    jobGradeRef: input.jobGradeId === null ? { disconnect: true } : input.jobGradeId ? { connect: { id: input.jobGradeId } } : undefined,
   };
 
   if (input.hireDate) {
     data.hireDate = parseHireDate(input.hireDate);
   }
 
-  return prisma.employee.update({
+  const employee = await prisma.employee.update({
     where: { id },
     data,
     select: employeeSelect,
   });
+
+  if (actorId) {
+    await createAuditLog({
+      userId: actorId,
+      action: AuditAction.UPDATE,
+      entityType: "employee",
+      entityId: employee.id,
+      metadata: { employeeCode: employee.employeeCode },
+    });
+  }
+
+  return employee;
 }
 
-export async function deleteEmployee(id: string): Promise<void> {
-  await getEmployeeById(id);
+export async function deleteEmployee(id: string, actorId?: string): Promise<void> {
+  const employee = await getEmployeeById(id);
   await prisma.employee.delete({ where: { id } });
+
+  if (actorId) {
+    await createAuditLog({
+      userId: actorId,
+      action: AuditAction.DELETE,
+      entityType: "employee",
+      entityId: id,
+      metadata: { employeeCode: employee.employeeCode },
+    });
+  }
+}
+
+export async function deactivateEmployee(id: string, actorId?: string): Promise<SafeEmployee> {
+  return updateEmployee(id, { status: EmployeeStatus.INACTIVE }, actorId);
 }

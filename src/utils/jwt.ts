@@ -15,10 +15,13 @@ function getJwtSecret(): string {
   return secret;
 }
 
-export function signToken(payload: JwtPayload): string {
-  const expiresIn = (process.env.JWT_EXPIRES_IN ?? "7d") as jwt.SignOptions["expiresIn"];
-
+export function signAccessToken(payload: JwtPayload): string {
+  const expiresIn = (process.env.JWT_EXPIRES_IN ?? "1h") as jwt.SignOptions["expiresIn"];
   return jwt.sign(payload, getJwtSecret(), { expiresIn });
+}
+
+export function signToken(payload: JwtPayload): string {
+  return signAccessToken(payload);
 }
 
 export function verifyToken(token: string): JwtPayload {

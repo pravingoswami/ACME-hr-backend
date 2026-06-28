@@ -1,3 +1,5 @@
+import { DEPARTMENTS, JOB_GRADES } from "./reference.seed";
+
 export type EmployeeSeedStatus = "ACTIVE" | "INACTIVE" | "ON_LEAVE";
 
 export interface EmployeeSeedData {
@@ -13,30 +15,89 @@ export interface EmployeeSeedData {
   status: EmployeeSeedStatus;
 }
 
-export const SAMPLE_EMPLOYEES: EmployeeSeedData[] = [
-  { employeeCode: "EMP001", firstName: "James", lastName: "Wilson", email: "james.wilson@acme.com", phone: "+1-555-0101", department: "Engineering", position: "Senior Software Engineer", hireDate: "2021-03-15", salary: 95000, status: "ACTIVE" },
-  { employeeCode: "EMP002", firstName: "Sarah", lastName: "Chen", email: "sarah.chen@acme.com", phone: "+1-555-0102", department: "Engineering", position: "Frontend Developer", hireDate: "2022-06-01", salary: 82000, status: "ACTIVE" },
-  { employeeCode: "EMP003", firstName: "Michael", lastName: "Brown", email: "michael.brown@acme.com", phone: "+1-555-0103", department: "Engineering", position: "Backend Developer", hireDate: "2022-08-20", salary: 85000, status: "ACTIVE" },
-  { employeeCode: "EMP004", firstName: "Emily", lastName: "Davis", email: "emily.davis@acme.com", phone: "+1-555-0104", department: "Engineering", position: "DevOps Engineer", hireDate: "2020-11-10", salary: 98000, status: "ACTIVE" },
-  { employeeCode: "EMP005", firstName: "David", lastName: "Martinez", email: "david.martinez@acme.com", phone: "+1-555-0105", department: "Engineering", position: "QA Engineer", hireDate: "2023-01-15", salary: 72000, status: "ACTIVE" },
-  { employeeCode: "EMP006", firstName: "Lisa", lastName: "Anderson", email: "lisa.anderson@acme.com", phone: "+1-555-0106", department: "Human Resources", position: "HR Specialist", hireDate: "2019-05-20", salary: 68000, status: "ACTIVE" },
-  { employeeCode: "EMP007", firstName: "Robert", lastName: "Taylor", email: "robert.taylor@acme.com", phone: "+1-555-0107", department: "Human Resources", position: "Recruiter", hireDate: "2021-09-01", salary: 65000, status: "ACTIVE" },
-  { employeeCode: "EMP008", firstName: "Jennifer", lastName: "Thomas", email: "jennifer.thomas@acme.com", phone: "+1-555-0108", department: "Finance", position: "Financial Analyst", hireDate: "2020-02-14", salary: 78000, status: "ACTIVE" },
-  { employeeCode: "EMP009", firstName: "William", lastName: "Jackson", email: "william.jackson@acme.com", phone: "+1-555-0109", department: "Finance", position: "Accountant", hireDate: "2018-07-30", salary: 75000, status: "ACTIVE" },
-  { employeeCode: "EMP010", firstName: "Amanda", lastName: "White", email: "amanda.white@acme.com", phone: "+1-555-0110", department: "Finance", position: "Payroll Manager", hireDate: "2017-04-12", salary: 88000, status: "ACTIVE" },
-  { employeeCode: "EMP011", firstName: "Christopher", lastName: "Harris", email: "christopher.harris@acme.com", phone: "+1-555-0111", department: "Marketing", position: "Marketing Manager", hireDate: "2019-10-05", salary: 92000, status: "ACTIVE" },
-  { employeeCode: "EMP012", firstName: "Jessica", lastName: "Clark", email: "jessica.clark@acme.com", phone: "+1-555-0112", department: "Marketing", position: "Content Strategist", hireDate: "2022-03-22", salary: 70000, status: "ACTIVE" },
-  { employeeCode: "EMP013", firstName: "Daniel", lastName: "Lewis", email: "daniel.lewis@acme.com", phone: "+1-555-0113", department: "Marketing", position: "Social Media Specialist", hireDate: "2023-06-10", salary: 58000, status: "ACTIVE" },
-  { employeeCode: "EMP014", firstName: "Ashley", lastName: "Walker", email: "ashley.walker@acme.com", phone: "+1-555-0114", department: "Sales", position: "Sales Manager", hireDate: "2018-01-08", salary: 95000, status: "ACTIVE" },
-  { employeeCode: "EMP015", firstName: "Matthew", lastName: "Hall", email: "matthew.hall@acme.com", phone: "+1-555-0115", department: "Sales", position: "Account Executive", hireDate: "2021-11-15", salary: 72000, status: "ACTIVE" },
-  { employeeCode: "EMP016", firstName: "Nicole", lastName: "Allen", email: "nicole.allen@acme.com", phone: "+1-555-0116", department: "Sales", position: "Business Development Rep", hireDate: "2023-02-28", salary: 62000, status: "ACTIVE" },
-  { employeeCode: "EMP017", firstName: "Andrew", lastName: "Young", email: "andrew.young@acme.com", phone: "+1-555-0117", department: "Operations", position: "Operations Manager", hireDate: "2016-09-20", salary: 90000, status: "ACTIVE" },
-  { employeeCode: "EMP018", firstName: "Stephanie", lastName: "King", email: "stephanie.king@acme.com", phone: "+1-555-0118", department: "Operations", position: "Logistics Coordinator", hireDate: "2020-12-01", salary: 58000, status: "ACTIVE" },
-  { employeeCode: "EMP019", firstName: "Joshua", lastName: "Wright", email: "joshua.wright@acme.com", phone: "+1-555-0119", department: "IT", position: "IT Support Specialist", hireDate: "2022-05-18", salary: 60000, status: "ACTIVE" },
-  { employeeCode: "EMP020", firstName: "Melissa", lastName: "Lopez", email: "melissa.lopez@acme.com", phone: "+1-555-0120", department: "IT", position: "Systems Administrator", hireDate: "2019-08-25", salary: 82000, status: "ACTIVE" },
-  { employeeCode: "EMP021", firstName: "Ryan", lastName: "Hill", email: "ryan.hill@acme.com", phone: "+1-555-0121", department: "Legal", position: "Legal Counsel", hireDate: "2017-06-14", salary: 110000, status: "ACTIVE" },
-  { employeeCode: "EMP022", firstName: "Laura", lastName: "Scott", email: "laura.scott@acme.com", phone: "+1-555-0122", department: "Legal", position: "Compliance Officer", hireDate: "2021-04-07", salary: 85000, status: "ACTIVE" },
-  { employeeCode: "EMP023", firstName: "Kevin", lastName: "Green", email: "kevin.green@acme.com", phone: "+1-555-0123", department: "Engineering", position: "Tech Lead", hireDate: "2018-03-01", salary: 115000, status: "ACTIVE" },
-  { employeeCode: "EMP024", firstName: "Rachel", lastName: "Adams", email: "rachel.adams@acme.com", phone: "+1-555-0124", department: "Human Resources", position: "Training Coordinator", hireDate: "2022-10-12", salary: 62000, status: "ON_LEAVE" },
-  { employeeCode: "EMP025", firstName: "Brian", lastName: "Nelson", email: "brian.nelson@acme.com", phone: "+1-555-0125", department: "Operations", position: "Facilities Manager", hireDate: "2015-11-30", salary: 78000, status: "INACTIVE" },
+export const EMPLOYEE_SEED_TARGET = 10_000;
+
+const FIRST_NAMES = [
+  "James", "Sarah", "Michael", "Emily", "David", "Lisa", "Robert", "Jennifer",
+  "William", "Amanda", "Christopher", "Jessica", "Daniel", "Ashley", "Matthew",
+  "Nicole", "Andrew", "Stephanie", "Joshua", "Melissa", "Ryan", "Laura",
+  "Kevin", "Rachel", "Brian", "Anna", "Mark", "Sophia", "Jason", "Olivia",
+  "Eric", "Emma", "Thomas", "Mia", "Paul", "Isabella", "Steven", "Charlotte",
+  "Richard", "Amelia", "Charles", "Harper", "Joseph", "Evelyn", "Anthony",
+  "Abigail", "Donald", "Elizabeth", "Kenneth", "Sofia",
 ];
+
+const LAST_NAMES = [
+  "Wilson", "Chen", "Brown", "Davis", "Martinez", "Anderson", "Taylor", "Thomas",
+  "Jackson", "White", "Harris", "Clark", "Lewis", "Walker", "Hall", "Allen",
+  "Young", "King", "Wright", "Lopez", "Hill", "Scott", "Green", "Adams", "Nelson",
+  "Baker", "Gonzalez", "Perez", "Roberts", "Turner", "Phillips", "Campbell",
+  "Parker", "Evans", "Edwards", "Collins", "Stewart", "Morris", "Rogers", "Reed",
+];
+
+const POSITIONS_BY_DEPT: Record<string, string[]> = {
+  Engineering: ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "DevOps Engineer", "QA Engineer", "Tech Lead"],
+  "Human Resources": ["HR Specialist", "Recruiter", "Training Coordinator", "HR Business Partner"],
+  Finance: ["Financial Analyst", "Accountant", "Payroll Manager", "Controller"],
+  Marketing: ["Marketing Manager", "Content Strategist", "Social Media Specialist", "Brand Manager"],
+  Sales: ["Sales Manager", "Account Executive", "Business Development Rep", "Sales Associate"],
+  Operations: ["Operations Manager", "Logistics Coordinator", "Facilities Manager", "Process Analyst"],
+  "Information Technology": ["IT Support Specialist", "Systems Administrator", "Network Engineer", "Security Analyst"],
+  Legal: ["Legal Counsel", "Compliance Officer", "Paralegal"],
+  Product: ["Product Manager", "Product Designer", "Product Analyst"],
+  "Customer Success": ["Customer Success Manager", "Support Specialist", "Implementation Consultant"],
+  "Research & Development": ["Research Scientist", "Lab Technician", "R&D Engineer"],
+  Executive: ["Director", "VP", "Chief of Staff"],
+};
+
+const STATUSES: EmployeeSeedStatus[] = ["ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "ON_LEAVE", "INACTIVE"];
+
+function pick<T>(items: readonly T[], index: number): T {
+  return items[index % items.length];
+}
+
+function salaryForGrade(level: number): number {
+  const grade = JOB_GRADES.find((g) => g.level === level) ?? JOB_GRADES[2];
+  const range = Number(grade.maxSalary) - Number(grade.minSalary);
+  const offset = (level * 137) % Math.max(range, 1);
+  return Number(grade.minSalary) + offset;
+}
+
+function hireDateForIndex(index: number): string {
+  const year = 2015 + (index % 11);
+  const month = (index % 12) + 1;
+  const day = (index % 27) + 1;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function phoneForIndex(index: number): string {
+  return `+1-555-${String(index).padStart(5, "0")}`;
+}
+
+export function generateEmployeeSeedData(count: number, startIndex = 1): EmployeeSeedData[] {
+  return Array.from({ length: count }, (_, offset) => {
+    const index = startIndex + offset;
+    const firstName = pick(FIRST_NAMES, index);
+    const lastName = pick(LAST_NAMES, index * 3 + Math.floor(index / LAST_NAMES.length));
+    const department = pick(DEPARTMENTS, index).name;
+    const positions = POSITIONS_BY_DEPT[department] ?? ["Staff"];
+    const position = pick(positions, index);
+    const gradeLevel = (index % JOB_GRADES.length) + 1;
+
+    return {
+      employeeCode: `EMP${String(index).padStart(5, "0")}`,
+      firstName,
+      lastName,
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${index}@acme.com`,
+      phone: phoneForIndex(index),
+      department,
+      position,
+      hireDate: hireDateForIndex(index),
+      salary: salaryForGrade(gradeLevel),
+      status: pick(STATUSES, index),
+    };
+  });
+}
+
+/** @deprecated Use generateEmployeeSeedData(EMPLOYEE_SEED_TARGET) instead */
+export const SAMPLE_EMPLOYEES = generateEmployeeSeedData(25);

@@ -5,6 +5,7 @@ import { errorHandler } from "./middleware/errorHandler";
 import { prisma } from "./lib/prisma";
 import { seedAdmin } from "./lib/seed";
 import { seedEmployees } from "./lib/seedEmployees";
+import { seedReferenceData } from "./lib/seedReference";
 import routes from "./routes";
 
 dotenv.config();
@@ -38,6 +39,7 @@ async function start() {
     await prisma.$connect();
     console.log("Connected to PostgreSQL (Supabase)");
     await seedAdmin();
+    await seedReferenceData();
     await seedEmployees();
   } catch (error) {
     console.error("Failed to connect to PostgreSQL:", error);

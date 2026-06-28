@@ -12,6 +12,24 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function refresh(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await authService.refreshSession(req.body.refreshToken);
+    return sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function logout(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authService.logout(req.body.refreshToken);
+    return sendSuccess(res, { message: "Logged out successfully" });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function me(req: Request, res: Response, next: NextFunction) {
   try {
     const user = await userService.getUserById(req.user!.id);
