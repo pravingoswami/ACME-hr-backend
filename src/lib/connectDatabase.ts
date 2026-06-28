@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { getDatabaseConnectionHelp } from "./databaseUrl";
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const RETRY_DELAY_MS = 2_000;
@@ -32,5 +33,8 @@ export async function connectDatabaseWithRetry(
     }
   }
 
-  throw lastError;
+  throw new Error(
+    `Could not connect to PostgreSQL after ${maxAttempts} attempts.\n${getDatabaseConnectionHelp()}`,
+    { cause: lastError instanceof Error ? lastError : undefined },
+  );
 }
