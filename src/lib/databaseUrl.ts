@@ -1,6 +1,13 @@
 import dotenv from "dotenv";
+import { SUPABASE_PROJECT } from "../config/supabase";
 
 dotenv.config();
+
+export type DatabaseUrlSource =
+  | "pooler-env"
+  | "session-pooler"
+  | "transaction-pooler"
+  | "direct";
 
 export function normalizeDatabaseUrl(rawUrl: string): string {
   const url = new URL(rawUrl);
@@ -10,8 +17,7 @@ export function normalizeDatabaseUrl(rawUrl: string): string {
   }
 
   const isTransactionPooler =
-    url.port === "6543" ||
-    url.searchParams.get("pgbouncer") === "true";
+    url.port === "6543" || url.searchParams.get("pgbouncer") === "true";
 
   if (isTransactionPooler && !url.searchParams.has("pgbouncer")) {
     url.searchParams.set("pgbouncer", "true");
@@ -28,17 +34,7 @@ export function getDatabaseHost(rawUrl: string): string {
   }
 }
 
-function extractSupabaseProjectRef(url: URL): string | null {
-  const hostMatch = url.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
-  if (hostMatch) {
-    return hostMatch[1];
-  }
-
-  const userMatch = url.username.match(/^postgres\.([a-z0-9]+)$/i);
-  if (userMatch) {
-    return userMatch[1];
-  }
-
+export function getSupabaseProjectRef(): string | null {
   const supabaseUrl = process.env.SUPABASE_URL;
   if (supabaseUrl) {
     const refMatch = supabaseUrl.match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
@@ -65,11 +61,47 @@ function extractSupabaseProjectRef(url: URL): string | null {
     }
   }
 
+  const databaseUrl = process.env.DATABASE_URL;
+  if (databaseUrl) {
+    try {
+      return extractSupabaseProjectRef(new URL(databaseUrl));
+    } catch {
+      return null;
+    }
+  }
+
+  if (isProductionLike()) {
+    return SUPABASE_PROJECT.ref;
+  }
+
   return null;
 }
 
+function extractSupabaseProjectRef(url: URL): string | null {
+  const hostMatch = url.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
+  if (hostMatch) {
+    return hostMatch[1];
+  }
+
+  const userMatch = url.username.match(/^postgres\.([a-z0-9]+)$/i);
+  if (userMatch) {
+    return userMatch[1];
+  }
+
+  return getSupabaseProjectRef();
+}
+
 function getSupabaseRegion(): string | null {
-  return process.env.SUPABASE_REGION ?? process.env.SUPABASE_DB_REGION ?? null;
+  const fromEnv = process.env.SUPABASE_REGION ?? process.env.SUPABASE_DB_REGION;
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  if (isProductionLike()) {
+    return SUPABASE_PROJECT.region;
+  }
+
+  return null;
 }
 
 function isProductionLike(): boolean {
@@ -87,86 +119,131 @@ export function isSupabaseDirectConnection(rawUrl: string): boolean {
   }
 }
 
-function convertDirectToSharedSessionPooler(directUrl: string, region: string): string | null {
-  const source = new URL(directUrl);
-  const projectRef = extractSupabaseProjectRef(source);
+function getPoolerHosts(region: string): string[] {
+  const hosts = new Set<string>();
 
-  if (!projectRef) {
-    return null;
+  if (process.env.SUPABASE_POOLER_HOST) {
+    hosts.add(process.env.SUPABASE_POOLER_HOST);
   }
 
+  hosts.add(SUPABASE_PROJECT.poolerHost);
+  hosts.add(`aws-0-${region}.pooler.supabase.com`);
+  hosts.add(`aws-1-${region}.pooler.supabase.com`);
+
+  return [...hosts];
+}
+
+function buildSharedPoolerUrl(
+  directUrl: string,
+  projectRef: string,
+  poolerHost: string,
+  mode: "session" | "transaction",
+): string {
+  const source = new URL(directUrl);
   const pooler = new URL("postgresql://localhost/postgres");
   pooler.username = `postgres.${projectRef}`;
   pooler.password = source.password;
-  pooler.hostname = `aws-0-${region}.pooler.supabase.com`;
-  pooler.port = "5432";
+  pooler.hostname = poolerHost;
+  pooler.port = mode === "session" ? "5432" : "6543";
   pooler.pathname = source.pathname || "/postgres";
   pooler.searchParams.set("sslmode", "require");
+
+  if (mode === "transaction") {
+    pooler.searchParams.set("pgbouncer", "true");
+  }
 
   return pooler.toString();
 }
 
-function convertDirectToDedicatedPooler(directUrl: string): string | null {
-  const source = new URL(directUrl);
-  const projectRef = extractSupabaseProjectRef(source);
-
-  if (!projectRef) {
-    return null;
+export class DatabaseConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DatabaseConfigurationError";
   }
-
-  const pooler = new URL("postgresql://localhost/postgres");
-  pooler.username = `postgres.${projectRef}`;
-  pooler.password = source.password;
-  pooler.hostname = `db.${projectRef}.supabase.co`;
-  pooler.port = "6543";
-  pooler.pathname = source.pathname || "/postgres";
-  pooler.searchParams.set("sslmode", "require");
-  pooler.searchParams.set("pgbouncer", "true");
-
-  return pooler.toString();
 }
 
-export function resolveRuntimeDatabaseUrl(): {
-  url: string;
-  source: "pooler-env" | "session-pooler" | "dedicated-pooler" | "direct";
-} {
+export function getDatabaseConnectionHelp(): string {
+  const projectRef = getSupabaseProjectRef() ?? "[project-ref]";
+
+  return [
+    "Render cannot reach Supabase direct connections (db.*.supabase.co:5432).",
+    "",
+    "Add these environment variables on Render:",
+    "",
+    "Option A (recommended):",
+    `  SUPABASE_REGION=${SUPABASE_PROJECT.region}`,
+    "  DATABASE_URL=<keep your existing direct Supabase URL>",
+    "  DIRECT_URL=<same direct URL>",
+    "",
+    "Option B (copy from Supabase -> Connect -> Transaction pooler):",
+    `  DATABASE_POOLER_URL=postgresql://postgres.${projectRef}:[password]@${SUPABASE_PROJECT.poolerHost}:6543/postgres?pgbouncer=true&sslmode=require`,
+    "",
+    "Also ensure the Supabase project is not paused.",
+  ].join("\n");
+}
+
+export function getDatabaseUrlCandidates(): string[] {
   if (process.env.DATABASE_POOLER_URL) {
-    return {
-      url: normalizeDatabaseUrl(process.env.DATABASE_POOLER_URL),
-      source: "pooler-env",
-    };
+    return [normalizeDatabaseUrl(process.env.DATABASE_POOLER_URL)];
   }
 
   const rawUrl = process.env.DATABASE_URL;
   if (!rawUrl) {
-    throw new Error("DATABASE_URL is not configured");
+    throw new DatabaseConfigurationError("DATABASE_URL is not configured");
   }
 
-  if (isProductionLike() && isSupabaseDirectConnection(rawUrl)) {
-    const region = getSupabaseRegion();
-
-    if (region) {
-      const sessionPooler = convertDirectToSharedSessionPooler(rawUrl, region);
-      if (sessionPooler) {
-        return { url: sessionPooler, source: "session-pooler" };
-      }
-    }
-
-    const dedicatedPooler = convertDirectToDedicatedPooler(rawUrl);
-    if (dedicatedPooler) {
-      return { url: dedicatedPooler, source: "dedicated-pooler" };
-    }
+  if (!isProductionLike() || !isSupabaseDirectConnection(rawUrl)) {
+    return [normalizeDatabaseUrl(rawUrl)];
   }
 
-  return { url: normalizeDatabaseUrl(rawUrl), source: "direct" };
+  const region = getSupabaseRegion();
+  if (!region) {
+    throw new DatabaseConfigurationError(getDatabaseConnectionHelp());
+  }
+
+  const projectRef = extractSupabaseProjectRef(new URL(rawUrl));
+  if (!projectRef) {
+    throw new DatabaseConfigurationError(
+      "Could not determine Supabase project ref. Set SUPABASE_URL or SUPABASE_ANON_KEY on Render.",
+    );
+  }
+
+  const candidates: string[] = [];
+
+  for (const host of getPoolerHosts(region)) {
+    candidates.push(
+      buildSharedPoolerUrl(rawUrl, projectRef, host, "transaction"),
+      buildSharedPoolerUrl(rawUrl, projectRef, host, "session"),
+    );
+  }
+
+  return candidates;
+}
+
+export function resolveRuntimeDatabaseUrl(): { url: string; source: DatabaseUrlSource } {
+  const candidates = getDatabaseUrlCandidates();
+  const url = candidates[0];
+
+  if (process.env.DATABASE_POOLER_URL) {
+    return { url, source: "pooler-env" };
+  }
+
+  if (!isProductionLike() || !isSupabaseDirectConnection(process.env.DATABASE_URL ?? "")) {
+    return { url, source: "direct" };
+  }
+
+  if (new URL(url).port === "6543") {
+    return { url, source: "transaction-pooler" };
+  }
+
+  return { url, source: "session-pooler" };
 }
 
 export function getRuntimeDatabaseUrl(): string {
   return resolveRuntimeDatabaseUrl().url;
 }
 
-export function logDatabaseConnectionMode(): void {
-  const { url, source } = resolveRuntimeDatabaseUrl();
+export function logDatabaseConnectionMode(url: string, source: DatabaseUrlSource): void {
   const host = getDatabaseHost(url);
 
   if (source === "pooler-env") {
@@ -179,32 +256,10 @@ export function logDatabaseConnectionMode(): void {
     return;
   }
 
-  if (source === "dedicated-pooler") {
-    console.log(
-      `Using Supabase dedicated pooler host: ${host} (set SUPABASE_REGION for shared pooler if this fails)`,
-    );
+  if (source === "transaction-pooler") {
+    console.log(`Using Supabase transaction pooler host: ${host}`);
     return;
   }
 
   console.log(`Prisma using database host: ${host}`);
-
-  if (isProductionLike() && isSupabaseDirectConnection(process.env.DATABASE_URL ?? "")) {
-    console.warn(
-      [
-        "Warning: DATABASE_URL points to a Supabase direct connection.",
-        "On Render, add SUPABASE_REGION (from Supabase -> Project Settings -> General).",
-        "Example: SUPABASE_REGION=ap-south-1",
-        "Or set DATABASE_POOLER_URL to the Transaction pooler string from Supabase.",
-      ].join(" "),
-    );
-  }
-}
-
-export function getDatabaseConnectionHelp(): string {
-  return [
-    "Render cannot use Supabase direct connections (db.*.supabase.co:5432) reliably.",
-    "Add one of these on Render:",
-    "1) SUPABASE_REGION=<your-region>  (recommended; keeps DATABASE_URL as-is)",
-    "2) DATABASE_POOLER_URL=<transaction pooler URL from Supabase dashboard>",
-  ].join("\n");
 }

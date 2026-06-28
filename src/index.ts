@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { errorHandler } from "./middleware/errorHandler";
 import { connectDatabaseWithRetry } from "./lib/connectDatabase";
+import { DatabaseConfigurationError } from "./lib/databaseUrl";
 import { prisma } from "./lib/prisma";
 import { seedAdmin } from "./lib/seed";
 import { seedEmployees } from "./lib/seedEmployees";
@@ -43,7 +44,11 @@ async function start() {
     await seedReferenceData();
     await seedEmployees();
   } catch (error) {
-    console.error("Failed to connect to PostgreSQL:", error);
+    if (error instanceof DatabaseConfigurationError) {
+      console.error(error.message);
+    } else {
+      console.error("Failed to connect to PostgreSQL:", error);
+    }
     process.exit(1);
   }
 
